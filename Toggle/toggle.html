@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        :root {
+            color-scheme: dark;
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
+            background: transparent;
+        }
+
+        #stage {
+            position: fixed;
+            inset: 0;
+            overflow: hidden;
+            pointer-events: none;
+            background: transparent;
+        }
+
+        .toggle {
+            --w: 42px;
+            --h: 20px;
+            --pad: 3px;
+            position: absolute;
+            width: var(--w);
+            height: var(--h);
+            opacity: 1;
+            transform: translate3d(0, 0, 0);
+            transition: opacity 160ms ease;
+            will-change: transform, opacity;
+        }
+
+        .track {
+            position: absolute;
+            inset: 0;
+            border-radius: 999px;
+            border: 1px solid rgba(166, 173, 187, 0.42);
+            overflow: hidden;
+            background: #333740;
+            box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.12),
+                inset 0 -7px 12px rgba(0, 0, 0, 0.22),
+                0 2px 6px rgba(0, 0, 0, 0.24);
+            transition:
+                border-color 240ms cubic-bezier(0.22, 1, 0.36, 1),
+                box-shadow 240ms cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        .track::before,
+        .track::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            transition: opacity 240ms cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        .track::before {
+            opacity: 1;
+            background:
+                linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0)),
+                linear-gradient(135deg, #4c4f58, #333740);
+        }
+
+        .track::after {
+            opacity: 0;
+            background:
+                linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0)),
+                linear-gradient(135deg, #4876ff 0%, #6557ff 52%, #7c3aed 100%);
+        }
+
+        .knob {
+            position: absolute;
+            top: var(--pad);
+            left: var(--pad);
+            width: calc(var(--h) - (var(--pad) * 2));
+            height: calc(var(--h) - (var(--pad) * 2));
+            border-radius: 50%;
+            background:
+                radial-gradient(circle at 35% 28%, #ffffff 0, #ffffff 24%, #eef2ff 62%, #c7d2fe 100%);
+            box-shadow:
+                0 1px 1px rgba(255, 255, 255, 0.75) inset,
+                0 2px 7px rgba(0, 0, 0, 0.36);
+            transform: translate3d(0, 0, 0);
+            transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
+            will-change: transform;
+        }
+
+        .toggle.is-on .track {
+            border-color: rgba(139, 168, 255, 0.9);
+            box-shadow:
+                0 0 13px rgba(72, 118, 255, 0.72),
+                0 0 24px rgba(124, 58, 237, 0.42),
+                inset 0 1px 0 rgba(255, 255, 255, 0.22),
+                inset 0 -8px 13px rgba(0, 0, 0, 0.18);
+        }
+
+        .toggle.is-on .track::before {
+            opacity: 0;
+        }
+
+        .toggle.is-on .track::after {
+            opacity: 1;
+        }
+
+        .toggle.is-on .knob {
+            transform: translate3d(calc(var(--w) - var(--h)), 0, 0);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .toggle,
+            .track,
+            .knob {
+                transition-duration: 1ms;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="stage"></div>
+
+    <script>
+        const stage = document.getElementById("stage");
+        const toggles = new Map();
+
+        function readMessage(data) {
+            if (typeof data !== "string") {
+                return data || {};
+            }
+
+            try {
+                return JSON.parse(data);
+            } catch (error) {
+                return {};
+            }
+        }
+
+        function createToggle(id) {
+            const toggle = document.createElement("div");
+            const track = document.createElement("div");
+            const knob = document.createElement("div");
+
+            toggle.className = "toggle";
+            toggle.dataset.id = id;
+            track.className = "track";
+            knob.className = "knob";
+
+            toggle.append(track, knob);
+            stage.appendChild(toggle);
+            toggles.set(id, toggle);
+
+            return toggle;
+        }
+
+        function applyToggle(item, fallbackIndex) {
+            const id = String(item.id ?? fallbackIndex);
+            const width = Math.max(18, Number(item.w ?? item.width ?? 42));
+            const height = Math.max(12, Number(item.h ?? item.height ?? 20));
+            const x = Number(item.x ?? ((window.innerWidth - width) / 2));
+            const y = Number(item.y ?? ((window.innerHeight - height) / 2));
+            const opacity = Math.max(0, Math.min(1, Number(item.alpha ?? 1)));
+            const pad = Math.max(2, Math.min(4, Math.round(height * 0.16)));
+            const toggle = toggles.get(id) || createToggle(id);
+
+            toggle.style.setProperty("--w", `${width}px`);
+            toggle.style.setProperty("--h", `${height}px`);
+            toggle.style.setProperty("--pad", `${pad}px`);
+            toggle.style.width = `${width}px`;
+            toggle.style.height = `${height}px`;
+            toggle.style.opacity = opacity;
+            toggle.style.transform = `translate3d(${Math.round(x)}px, ${Math.round(y)}px, 0)`;
+            toggle.classList.toggle("is-on", Boolean(item.state));
+
+            return id;
+        }
+
+        function setToggles(items) {
+            const active = new Set();
+            const list = Array.isArray(items) ? items : [];
+
+            list.forEach((item, index) => {
+                active.add(applyToggle(item, index));
+            });
+
+            toggles.forEach((node, id) => {
+                if (!active.has(id)) {
+                    node.remove();
+                    toggles.delete(id);
+                }
+            });
+        }
+
+        function setToggle(state, id) {
+            setToggles([{
+                id: id || "single",
+                state: Boolean(state)
+            }]);
+        }
+
+        window.setToggle = setToggle;
+        window.setToggles = setToggles;
+
+        if (new URLSearchParams(window.location.search).has("preview")) {
+            let enabled = true;
+
+            setToggles([
+                { id: "preview-on", x: 48, y: 42, w: 48, h: 24, state: true },
+                { id: "preview-off", x: 48, y: 82, w: 48, h: 24, state: false }
+            ]);
+
+            window.setInterval(() => {
+                enabled = !enabled;
+                setToggles([
+                    { id: "preview-on", x: 48, y: 42, w: 48, h: 24, state: enabled },
+                    { id: "preview-off", x: 48, y: 82, w: 48, h: 24, state: !enabled }
+                ]);
+            }, 900);
+        }
+
+        window.addEventListener("message", (event) => {
+            const data = readMessage(event.data);
+
+            if (data.action === "setToggle") {
+                setToggle(data.state, data.id);
+                return;
+            }
+
+            if (data.action === "setToggles") {
+                setToggles(data.toggles);
+            }
+        });
+    </script>
+</body>
+</html>
