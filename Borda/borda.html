@@ -1,0 +1,165 @@
+<!doctype html>
+<!-- ZN4X border DUI -->
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root {
+      color-scheme: dark;
+      --menu-r: 0;
+      --menu-g: 0;
+      --menu-b: 0;
+      --corner: 34px;
+      --radius: 14px;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: transparent;
+    }
+
+    #stage {
+      position: fixed;
+      inset: 0;
+      overflow: hidden;
+      pointer-events: none;
+      background: transparent;
+    }
+
+    .piece {
+      position: absolute;
+      background: rgb(var(--menu-r), var(--menu-g), var(--menu-b));
+      transform: translate3d(0, 0, 0);
+    }
+
+    .center {
+      border-radius: 0;
+    }
+
+    .side-left,
+    .side-right {
+      border-radius: 0;
+    }
+
+    .corner {
+      position: absolute;
+      width: var(--corner);
+      height: var(--corner);
+      object-fit: fill;
+      pointer-events: none;
+      filter: brightness(0);
+      transform-origin: center;
+      will-change: left, top, transform;
+    }
+
+    .corner-tl {
+      transform: rotate(270deg);
+    }
+
+    .corner-tr {
+      transform: rotate(0deg);
+    }
+
+    .corner-br {
+      transform: rotate(90deg);
+    }
+
+    .corner-bl {
+      transform: rotate(180deg);
+    }
+
+    .outline {
+      position: absolute;
+      border: 1px solid rgba(48, 50, 54, 0.6);
+      border-radius: var(--radius);
+      box-sizing: border-box;
+      pointer-events: none;
+    }
+
+    #stage[data-visible="false"] .piece,
+    #stage[data-visible="false"] .corner,
+    #stage[data-visible="false"] .outline {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="stage" data-visible="false">
+    <div id="center" class="piece center"></div>
+    <div id="left" class="piece side-left"></div>
+    <div id="right" class="piece side-right"></div>
+    <img id="tl" class="corner corner-tl" src="https://pedrohenriqueljs-cyber.github.io/Icones_zn4x/Borda/Borda.png?v=1" alt="">
+    <img id="tr" class="corner corner-tr" src="https://pedrohenriqueljs-cyber.github.io/Icones_zn4x/Borda/Borda.png?v=1" alt="">
+    <img id="br" class="corner corner-br" src="https://pedrohenriqueljs-cyber.github.io/Icones_zn4x/Borda/Borda.png?v=1" alt="">
+    <img id="bl" class="corner corner-bl" src="https://pedrohenriqueljs-cyber.github.io/Icones_zn4x/Borda/Borda.png?v=1" alt="">
+    <div id="outline" class="outline"></div>
+  </div>
+
+  <script>
+    const stage = document.getElementById("stage");
+    const center = document.getElementById("center");
+    const left = document.getElementById("left");
+    const right = document.getElementById("right");
+    const outline = document.getElementById("outline");
+    const corners = {
+      tl: document.getElementById("tl"),
+      tr: document.getElementById("tr"),
+      br: document.getElementById("br"),
+      bl: document.getElementById("bl")
+    };
+
+    function px(value) {
+      return `${Math.round(value)}px`;
+    }
+
+    function place(el, x, y, w, h) {
+      el.style.left = px(x);
+      el.style.top = px(y);
+      el.style.width = px(Math.max(0, w));
+      el.style.height = px(Math.max(0, h));
+    }
+
+    function setMenuShell(data) {
+      const x = Number(data.x) || 0;
+      const y = Number(data.y) || 0;
+      const w = Math.max(0, Number(data.w) || 0);
+      const h = Math.max(0, Number(data.h) || 0);
+      const corner = Math.max(8, Number(data.corner) || 34);
+      const radius = Math.max(0, Number(data.radius) || 14);
+      const color = Array.isArray(data.color) ? data.color : [0, 0, 0];
+
+      document.documentElement.style.setProperty("--menu-r", Number(color[0]) || 0);
+      document.documentElement.style.setProperty("--menu-g", Number(color[1]) || 0);
+      document.documentElement.style.setProperty("--menu-b", Number(color[2]) || 0);
+      document.documentElement.style.setProperty("--corner", px(corner));
+      document.documentElement.style.setProperty("--radius", px(radius));
+
+      place(center, x + corner, y, w - (corner * 2), h);
+      place(left, x, y + corner, corner, h - (corner * 2));
+      place(right, x + w - corner, y + corner, corner, h - (corner * 2));
+
+      place(corners.tl, x, y, corner, corner);
+      place(corners.tr, x + w - corner, y, corner, corner);
+      place(corners.br, x + w - corner, y + h - corner, corner, corner);
+      place(corners.bl, x, y + h - corner, corner, corner);
+      place(outline, x, y, w, h);
+
+      stage.dataset.visible = w > 0 && h > 0 ? "true" : "false";
+    }
+
+    window.__setMenuShell = setMenuShell;
+
+    window.addEventListener("message", (event) => {
+      const data = event.data || {};
+      if (data.action === "setMenuShell") {
+        setMenuShell(data);
+      }
+    });
+  </script>
+</body>
+</html>
